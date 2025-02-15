@@ -36,17 +36,9 @@ function getBackgroundColor(ctx: CanvasRenderingContext2D, img: HTMLImageElement
 
 interface ProcessImageOptions extends ProcessImageInput {
   zoomLevel?: number; // 0.5 to 2.0, default 1.0
-  offsetX?: number; // horizontal offset for dragging
-  offsetY?: number; // vertical offset for dragging
 }
 
-export async function processImage({ 
-  file, 
-  preset, 
-  zoomLevel = 1.0,
-  offsetX = 0,
-  offsetY = 0 
-}: ProcessImageOptions): Promise<string> {
+export async function processImage({ file, preset, zoomLevel = 1.0 }: ProcessImageOptions): Promise<string> {
   const targetSize = SOCIAL_PRESETS[preset];
 
   // Compress image before processing
@@ -107,21 +99,39 @@ export async function processImage({
   const scaledHeight = img.height * scale;
 
   // Add padding to prevent cropping
-  const x = (targetSize.width - scaledWidth) / 2 + offsetX;
-  const y = (targetSize.height - scaledHeight) / 2 + offsetY;
+  const x = (targetSize.width - scaledWidth) / 2;
+  const y = (targetSize.height - scaledHeight) / 2;
 
   // Fill background with detected color
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw image with position offset and scaling
-  ctx.drawImage(
-    img,
-    x,
-    y,
-    scaledWidth,
-    scaledHeight
-  );
+  // Draw image with smart positioning based on format
+  if (preset === "INSTAGRAM_STORY") {
+    ctx.drawImage(
+      img,
+      x,
+      y * 0.5, // Align more towards top for vertical formats
+      scaledWidth,
+      scaledHeight
+    );
+  } else if (preset === "YOUTUBE_THUMBNAIL") {
+    ctx.drawImage(
+      img,
+      x,
+      y * 0.8, // Slightly higher than center
+      scaledWidth,
+      scaledHeight
+    );
+  } else {
+    ctx.drawImage(
+      img,
+      x,
+      y,
+      scaledWidth,
+      scaledHeight
+    );
+  }
 
   // Convert to data URL with high quality
   return canvas.toDataURL("image/jpeg", 0.95);
