@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
-import { InteractiveImage } from "./interactive-image";
 
 interface ImagePreviewProps {
   originalImage: File | null;
@@ -18,7 +17,7 @@ export function ImagePreview({
 }: ImagePreviewProps) {
   const handleDownload = () => {
     if (!processedImage) return;
-
+    
     const link = document.createElement("a");
     link.href = processedImage;
     link.download = `processed-${originalImage?.name || "image"}.jpg`;
@@ -44,7 +43,7 @@ export function ImagePreview({
             className="w-full h-48 object-contain bg-muted rounded-lg"
           />
         </div>
-
+        
         <div>
           <h3 className="font-semibold mb-2">
             {selectedPreset ? `${selectedPreset.label} Preview` : "Preview"}
@@ -52,10 +51,10 @@ export function ImagePreview({
           {isProcessing ? (
             <Skeleton className="w-full h-48 rounded-lg" />
           ) : processedImage ? (
-            <InteractiveImage
+            <img
               src={processedImage}
               alt="Processed"
-              className="w-full h-48 bg-muted rounded-lg overflow-hidden"
+              className="w-full h-48 object-contain bg-muted rounded-lg"
             />
           ) : (
             <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center">
