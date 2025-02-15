@@ -49,8 +49,8 @@ export function ImagePreview({
     const newX = e.clientX - dragStart.x;
     const newY = e.clientY - dragStart.y;
 
-    // Limit dragging to reasonable bounds
-    const bounds = 200; // Maximum drag distance
+    // Limit dragging to reasonable bounds based on zoom level
+    const bounds = 200 * (1 / zoomLevel); // Adjust bounds based on zoom
     const clampedX = Math.max(-bounds, Math.min(bounds, newX));
     const clampedY = Math.max(-bounds, Math.min(bounds, newY));
 
@@ -103,15 +103,20 @@ export function ImagePreview({
             {isProcessing ? (
               <Skeleton className="w-full h-48 rounded-lg" />
             ) : processedImage ? (
-              <img
-                src={processedImage}
-                alt="Processed"
-                className="w-full h-48 object-contain"
-                style={{
-                  transform: `translate(${position.x}px, ${position.y}px)`,
-                  transition: isDragging ? "none" : "transform 0.1s ease-out"
-                }}
-              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img
+                  src={processedImage}
+                  alt="Processed"
+                  className="max-w-none"
+                  style={{
+                    transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
+                    transition: isDragging ? "none" : "transform 0.1s ease-out",
+                    width: selectedPreset?.width || "100%",
+                    height: selectedPreset?.height || "100%",
+                    objectFit: "cover"
+                  }}
+                />
+              </div>
             ) : (
               <div className="w-full h-48 flex items-center justify-center">
                 <p className="text-sm text-muted-foreground">
