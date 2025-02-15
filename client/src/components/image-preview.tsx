@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Download, ZoomIn, ZoomOut } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 interface ImagePreviewProps {
   originalImage: File | null;
@@ -9,6 +10,7 @@ interface ImagePreviewProps {
   selectedPreset: { width: number; height: number; label: string } | null;
   isProcessing: boolean;
   onZoomChange?: (zoom: number) => void;
+  onPositionChange?: (x: number, y: number) => void;
   zoomLevel?: number;
 }
 
@@ -18,8 +20,14 @@ export function ImagePreview({
   selectedPreset,
   isProcessing,
   onZoomChange = () => {},
+  onPositionChange = () => {},
   zoomLevel = 1,
 }: ImagePreviewProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const previewRef = useRef<HTMLDivElement>(null);
+
   const handleDownload = () => {
     if (!processedImage) return;
 
@@ -28,6 +36,36 @@ export function ImagePreview({
     link.download = `processed-${originalImage?.name || "image"}.jpg`;
     link.click();
   };
+
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!processedImage) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  const handleDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !processedImage) return;
+
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+
+    // Limit dragging to reasonable bounds
+    const bounds = 200; // Maximum drag distance
+    const clampedX = Math.max(-bounds, Math.min(bounds, newX));
+    const clampedY = Math.max(-bounds, Math.min(bounds, newY));
+
+    setPosition({ x: clampedX, y: clampedY });
+    onPositionChange(clampedX, clampedY);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    // Reset position when image changes
+    setPosition({ x: 0, y: 0 });
+  }, [originalImage, selectedPreset]);
 
   if (!originalImage) {
     return (
@@ -53,21 +91,35 @@ export function ImagePreview({
           <h3 className="font-semibold mb-2">
             {selectedPreset ? `${selectedPreset.label} Preview` : "Preview"}
           </h3>
-          {isProcessing ? (
-            <Skeleton className="w-full h-48 rounded-lg" />
-          ) : processedImage ? (
-            <img
-              src={processedImage}
-              alt="Processed"
-              className="w-full h-48 object-contain bg-muted rounded-lg"
-            />
-          ) : (
-            <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                Select a preset to preview
-              </p>
-            </div>
-          )}
+          <div
+            ref={previewRef}
+            className="relative w-full h-48 bg-muted rounded-lg overflow-hidden"
+            onMouseDown={handleDragStart}
+            onMouseMove={handleDragMove}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+            style={{ cursor: isDragging ? "grabbing" : "grab" }}
+          >
+            {isProcessing ? (
+              <Skeleton className="w-full h-48 rounded-lg" />
+            ) : processedImage ? (
+              <img
+                src={processedImage}
+                alt="Processed"
+                className="w-full h-48 object-contain"
+                style={{
+                  transform: `translate(${position.x}px, ${position.y}px)`,
+                  transition: isDragging ? "none" : "transform 0.1s ease-out"
+                }}
+              />
+            ) : (
+              <div className="w-full h-48 flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  Select a preset to preview
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
