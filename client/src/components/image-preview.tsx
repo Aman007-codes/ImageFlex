@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
+import { CanvasEditor } from "./canvas-editor";
+import { EditableElement } from "@shared/schema";
+import { useState } from "react";
 
 interface ImagePreviewProps {
   originalImage: File | null;
@@ -15,13 +18,19 @@ export function ImagePreview({
   selectedPreset,
   isProcessing,
 }: ImagePreviewProps) {
-  const handleDownload = () => {
+  const [elements, setElements] = useState<EditableElement[]>([]);
+
+  const handleSave = () => {
     if (!processedImage) return;
-    
+
     const link = document.createElement("a");
     link.href = processedImage;
     link.download = `processed-${originalImage?.name || "image"}.jpg`;
     link.click();
+  };
+
+  const handleElementsChange = (newElements: EditableElement[]) => {
+    setElements(newElements);
   };
 
   if (!originalImage) {
@@ -43,7 +52,7 @@ export function ImagePreview({
             className="w-full h-48 object-contain bg-muted rounded-lg"
           />
         </div>
-        
+
         <div>
           <h3 className="font-semibold mb-2">
             {selectedPreset ? `${selectedPreset.label} Preview` : "Preview"}
@@ -51,11 +60,14 @@ export function ImagePreview({
           {isProcessing ? (
             <Skeleton className="w-full h-48 rounded-lg" />
           ) : processedImage ? (
-            <img
-              src={processedImage}
-              alt="Processed"
-              className="w-full h-48 object-contain bg-muted rounded-lg"
-            />
+            <div className="relative">
+              <CanvasEditor
+                image={processedImage}
+                width={selectedPreset?.width || 800}
+                height={selectedPreset?.height || 600}
+                onSave={handleElementsChange}
+              />
+            </div>
           ) : (
             <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center">
               <p className="text-sm text-muted-foreground">
@@ -69,7 +81,7 @@ export function ImagePreview({
       {processedImage && (
         <Button
           className="w-full"
-          onClick={handleDownload}
+          onClick={handleSave}
         >
           <Download className="w-4 h-4 mr-2" />
           Download Processed Image

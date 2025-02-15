@@ -13,6 +13,20 @@ export const SOCIAL_PRESETS = {
 
 export type SocialPreset = keyof typeof SOCIAL_PRESETS;
 
+// Define types for editable elements
+export interface EditableElement {
+  id: string;
+  type: 'text' | 'image';
+  content: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  fontSize?: number;
+  fontFamily?: string;
+}
+
 // Store processed images
 export const images = pgTable("images", {
   id: serial("id").primaryKey(),
@@ -20,6 +34,7 @@ export const images = pgTable("images", {
   processedUrl: text("processed_url").notNull(),
   width: integer("width").notNull(),
   height: integer("height").notNull(),
+  elements: text("elements").notNull(), // JSON string of EditableElement[]
 });
 
 export const insertImageSchema = createInsertSchema(images);
