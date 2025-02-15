@@ -12,11 +12,13 @@ export default function Home() {
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<SocialPreset | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
   const { toast } = useToast();
 
   const handleImageUpload = (file: File) => {
     setOriginalImage(file);
     setProcessedImage(null);
+    setZoomLevel(1.0);
   };
 
   const handlePresetSelect = async (preset: SocialPreset) => {
@@ -30,12 +32,18 @@ export default function Home() {
     }
 
     setSelectedPreset(preset);
-    setIsProcessing(true);
+    await processImageWithPreset(preset);
+  };
 
+  const processImageWithPreset = async (preset: SocialPreset) => {
+    if (!originalImage) return;
+
+    setIsProcessing(true);
     try {
       const result = await processImage({
         file: originalImage,
         preset,
+        zoomLevel,
       });
       setProcessedImage(result);
     } catch (error) {
@@ -46,6 +54,13 @@ export default function Home() {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleZoomChange = async (newZoom: number) => {
+    setZoomLevel(newZoom);
+    if (selectedPreset) {
+      await processImageWithPreset(selectedPreset);
     }
   };
 
@@ -80,6 +95,8 @@ export default function Home() {
                 processedImage={processedImage}
                 selectedPreset={selectedPreset ? SOCIAL_PRESETS[selectedPreset] : null}
                 isProcessing={isProcessing}
+                onZoomChange={handleZoomChange}
+                zoomLevel={zoomLevel}
               />
             </CardContent>
           </Card>

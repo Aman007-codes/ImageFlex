@@ -34,7 +34,11 @@ function getBackgroundColor(ctx: CanvasRenderingContext2D, img: HTMLImageElement
   return `rgb(${Math.round(avgColor.r)}, ${Math.round(avgColor.g)}, ${Math.round(avgColor.b)})`;
 }
 
-export async function processImage({ file, preset }: ProcessImageInput): Promise<string> {
+interface ProcessImageOptions extends ProcessImageInput {
+  zoomLevel?: number; // 0.5 to 2.0, default 1.0
+}
+
+export async function processImage({ file, preset, zoomLevel = 1.0 }: ProcessImageOptions): Promise<string> {
   const targetSize = SOCIAL_PRESETS[preset];
 
   // Compress image before processing
@@ -87,6 +91,9 @@ export async function processImage({ file, preset }: ProcessImageInput): Promise
   );
   if (scale < 0.5) scale = minScale;
 
+  // Apply zoom level to scale
+  scale *= zoomLevel;
+
   // Calculate dimensions after scaling
   const scaledWidth = img.width * scale;
   const scaledHeight = img.height * scale;
@@ -99,9 +106,8 @@ export async function processImage({ file, preset }: ProcessImageInput): Promise
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw image with smart positioning
+  // Draw image with smart positioning based on format
   if (preset === "INSTAGRAM_STORY") {
-    // For vertical formats, align to top third
     ctx.drawImage(
       img,
       x,
@@ -110,7 +116,6 @@ export async function processImage({ file, preset }: ProcessImageInput): Promise
       scaledHeight
     );
   } else if (preset === "YOUTUBE_THUMBNAIL") {
-    // For YouTube thumbnails, maintain center alignment but ensure text visibility
     ctx.drawImage(
       img,
       x,
@@ -119,7 +124,6 @@ export async function processImage({ file, preset }: ProcessImageInput): Promise
       scaledHeight
     );
   } else {
-    // For square and horizontal formats, use center alignment with smart scaling
     ctx.drawImage(
       img,
       x,
@@ -127,37 +131,6 @@ export async function processImage({ file, preset }: ProcessImageInput): Promise
       scaledWidth,
       scaledHeight
     );
-  }
-
-  // Attempt to detect faces using the Face Detection API if available
-  try {
-    const faceDetector = new window.FaceDetector();
-    const faces = await faceDetector.detect(img);
-
-    if (faces.length > 0) {
-      // If faces are detected, adjust position to ensure they're visible
-      const faceBox = faces[0].boundingBox;
-      const faceX = x + (faceBox.x * scale);
-      const faceY = y + (faceBox.y * scale);
-
-      // If face would be cropped, adjust the image position
-      if (faceX < 0 || faceX + faceBox.width > targetSize.width ||
-          faceY < 0 || faceY + faceBox.height > targetSize.height) {
-        // Clear canvas and redraw with adjusted position
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(
-          img,
-          Math.max(x, -faceBox.x * scale),
-          Math.max(y, -faceBox.y * scale),
-          scaledWidth,
-          scaledHeight
-        );
-      }
-    }
-  } catch (e) {
-    // Face detection not available or failed, continue with current positioning
-    console.log("Face detection not available:", e);
   }
 
   // Convert to data URL with high quality

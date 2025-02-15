@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Download, ZoomIn, ZoomOut } from "lucide-react";
 
 interface ImagePreviewProps {
   originalImage: File | null;
   processedImage: string | null;
   selectedPreset: { width: number; height: number; label: string } | null;
   isProcessing: boolean;
+  onZoomChange?: (zoom: number) => void;
+  zoomLevel?: number;
 }
 
 export function ImagePreview({
@@ -14,10 +17,12 @@ export function ImagePreview({
   processedImage,
   selectedPreset,
   isProcessing,
+  onZoomChange = () => {},
+  zoomLevel = 1,
 }: ImagePreviewProps) {
   const handleDownload = () => {
     if (!processedImage) return;
-    
+
     const link = document.createElement("a");
     link.href = processedImage;
     link.download = `processed-${originalImage?.name || "image"}.jpg`;
@@ -43,7 +48,7 @@ export function ImagePreview({
             className="w-full h-48 object-contain bg-muted rounded-lg"
           />
         </div>
-        
+
         <div>
           <h3 className="font-semibold mb-2">
             {selectedPreset ? `${selectedPreset.label} Preview` : "Preview"}
@@ -67,13 +72,28 @@ export function ImagePreview({
       </div>
 
       {processedImage && (
-        <Button
-          className="w-full"
-          onClick={handleDownload}
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Download Processed Image
-        </Button>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <ZoomOut className="w-4 h-4 text-muted-foreground" />
+            <Slider
+              value={[zoomLevel]}
+              min={0.5}
+              max={2}
+              step={0.1}
+              onValueChange={([value]) => onZoomChange(value)}
+              className="flex-1"
+            />
+            <ZoomIn className="w-4 h-4 text-muted-foreground" />
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={handleDownload}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download Processed Image
+          </Button>
+        </div>
       )}
     </div>
   );
