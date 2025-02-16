@@ -5,7 +5,7 @@ import { PresetSelector } from "@/components/preset-selector";
 import { ImagePreview } from "@/components/image-preview";
 import { processImage } from "@/lib/image-processor";
 import { useToast } from "@/hooks/use-toast";
-import { ProcessImageInput, SOCIAL_PRESETS, SocialPreset } from "@shared/schema";
+import { ProcessImageInput, SOCIAL_PRESETS, SocialPreset, CustomSize } from "@shared/schema";
 
 export default function Home() {
   const [originalImage, setOriginalImage] = useState<File | null>(null);
@@ -13,6 +13,7 @@ export default function Home() {
   const [selectedPreset, setSelectedPreset] = useState<SocialPreset | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [customSize, setCustomSize] = useState<CustomSize>({ width: 800, height: 600 });
   const { toast } = useToast();
 
   const handleImageUpload = (file: File) => {
@@ -43,6 +44,7 @@ export default function Home() {
       const result = await processImage({
         file: originalImage,
         preset,
+        customSize: preset === "CUSTOM" ? customSize : undefined,
         zoomLevel,
       });
       setProcessedImage(result);
@@ -61,6 +63,13 @@ export default function Home() {
     setZoomLevel(newZoom);
     if (selectedPreset) {
       await processImageWithPreset(selectedPreset);
+    }
+  };
+
+  const handleCustomSizeChange = async (newSize: CustomSize) => {
+    setCustomSize(newSize);
+    if (selectedPreset === "CUSTOM") {
+      await processImageWithPreset("CUSTOM");
     }
   };
 
@@ -83,6 +92,8 @@ export default function Home() {
               <PresetSelector
                 selectedPreset={selectedPreset}
                 onPresetSelect={handlePresetSelect}
+                customSize={customSize}
+                onCustomSizeChange={handleCustomSizeChange}
                 disabled={!originalImage || isProcessing}
               />
             </CardContent>
@@ -93,7 +104,11 @@ export default function Home() {
               <ImagePreview
                 originalImage={originalImage}
                 processedImage={processedImage}
-                selectedPreset={selectedPreset ? SOCIAL_PRESETS[selectedPreset] : null}
+                selectedPreset={selectedPreset ? 
+                  selectedPreset === "CUSTOM" ? 
+                    { ...SOCIAL_PRESETS.CUSTOM, ...customSize } : 
+                    SOCIAL_PRESETS[selectedPreset] 
+                  : null}
                 isProcessing={isProcessing}
                 onZoomChange={handleZoomChange}
                 zoomLevel={zoomLevel}

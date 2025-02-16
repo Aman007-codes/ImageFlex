@@ -1,15 +1,20 @@
 import { Button } from "@/components/ui/button";
-import { SOCIAL_PRESETS, SocialPreset } from "@shared/schema";
+import { SOCIAL_PRESETS, SocialPreset, CustomSize } from "@shared/schema";
+import { CustomSizeInput } from "./custom-size-input";
 
 interface PresetSelectorProps {
   selectedPreset: SocialPreset | null;
   onPresetSelect: (preset: SocialPreset) => void;
+  customSize: CustomSize;
+  onCustomSizeChange: (size: CustomSize) => void;
   disabled?: boolean;
 }
 
 export function PresetSelector({
   selectedPreset,
   onPresetSelect,
+  customSize,
+  onCustomSizeChange,
   disabled
 }: PresetSelectorProps) {
   return (
@@ -26,13 +31,23 @@ export function PresetSelector({
           >
             <div className="text-left">
               <div className="font-medium">{preset.label}</div>
-              <div className="text-xs text-muted-foreground">
-                {preset.width} x {preset.height}
-              </div>
+              {key !== "CUSTOM" && (
+                <div className="text-xs text-muted-foreground">
+                  {preset.width} x {preset.height}
+                </div>
+              )}
             </div>
           </Button>
         ))}
       </div>
+
+      {selectedPreset === "CUSTOM" && (
+        <CustomSizeInput
+          value={customSize}
+          onChange={onCustomSizeChange}
+          disabled={disabled}
+        />
+      )}
     </div>
   );
 }

@@ -36,10 +36,13 @@ function getBackgroundColor(ctx: CanvasRenderingContext2D, img: HTMLImageElement
 
 interface ProcessImageOptions extends ProcessImageInput {
   zoomLevel?: number; // 0.5 to 2.0, default 1.0
+  customSize?: { width: number; height: number };
 }
 
-export async function processImage({ file, preset, zoomLevel = 1.0 }: ProcessImageOptions): Promise<string> {
-  const targetSize = SOCIAL_PRESETS[preset];
+export async function processImage({ file, preset, customSize, zoomLevel = 1.0 }: ProcessImageOptions): Promise<string> {
+  const targetSize = preset === "CUSTOM" && customSize 
+    ? customSize 
+    : SOCIAL_PRESETS[preset];
 
   // Compress image before processing
   const compressedFile = await imageCompression(file, {
