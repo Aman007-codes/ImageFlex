@@ -1,11 +1,13 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { Logo } from "@/components/ui/logo";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -47,47 +49,71 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{isLogin ? "Login" : "Create Account"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Loading..." : isLogin ? "Login" : "Create Account"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? "Need an account?" : "Already have an account?"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] rounded-full bg-gradient-to-br from-primary/20 to-primary/40 blur-3xl" />
+      <div className="absolute bottom-[-50px] left-[-50px] w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-primary/20 to-primary/40 blur-3xl" />
+      
+      <div className="w-full max-w-md space-y-6 relative">
+        <div className="flex flex-col items-center space-y-2 mb-8">
+          <Logo />
+          <h1 className="text-2xl font-semibold mt-8">
+            {isLogin ? "Good to see you again" : "Create your account"}
+          </h1>
+        </div>
+
+        <Card className="border-none shadow-lg">
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. john@example.com"
+                  required
+                  className="h-12"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="h-12"
+                />
+              </div>
+              <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isLoading}>
+                {isLoading ? "Loading..." : (isLogin ? "Sign in" : "Create Account")}
+              </Button>
+              <div className="flex justify-between items-center pt-2 text-sm">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="p-0 h-auto font-normal"
+                  onClick={() => setIsLogin(!isLogin)}
+                >
+                  {isLogin ? "Don't have an account?" : "Already have an account?"}
+                </Button>
+                {isLogin && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="p-0 h-auto font-normal"
+                  >
+                    Forgot password?
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
