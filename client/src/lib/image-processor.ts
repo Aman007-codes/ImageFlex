@@ -1,37 +1,66 @@
 import imageCompression from "browser-image-compression";
 import { ProcessImageInput, SOCIAL_PRESETS } from "@shared/schema";
 
-function getBackgroundColor(ctx: CanvasRenderingContext2D, img: HTMLImageElement): string {
-  // Sample pixels from the edges of the image to determine background color
-  const edgeSize = 10;
-  const samples: { r: number; g: number; b: number; }[] = [];
+function getBackgroundGradient(ctx: CanvasRenderingContext2D, img: HTMLImageElement, targetCanvas: HTMLCanvasElement): CanvasGradient {
+  const sampleSize = 5;
+  const topColors: { r: number; g: number; b: number; }[] = [];
+  const bottomColors: { r: number; g: number; b: number; }[] = [];
+  const leftColors: { r: number; g: number; b: number; }[] = [];
+  const rightColors: { r: number; g: number; b: number; }[] = [];
 
-  // Sample from corners and edges
-  const locations = [
-    [0, 0], // Top-left
-    [img.width - 1, 0], // Top-right
-    [0, img.height - 1], // Bottom-left
-    [img.width - 1, img.height - 1], // Bottom-right
-    [Math.floor(img.width / 2), 0], // Top middle
-    [Math.floor(img.width / 2), img.height - 1], // Bottom middle
-  ];
+  // Sample colors from all edges
+  for (let i = 0; i < sampleSize; i++) {
+    const x = Math.floor((img.width - 1) * (i / (sampleSize - 1)));
+    const y = Math.floor((img.height - 1) * (i / (sampleSize - 1)));
 
-  for (const [x, y] of locations) {
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    samples.push({ r: pixel[0], g: pixel[1], b: pixel[2] });
+    // Top edge
+    const topPixel = ctx.getImageData(x, 0, 1, 1).data;
+    topColors.push({ r: topPixel[0], g: topPixel[1], b: topPixel[2] });
+
+    // Bottom edge
+    const bottomPixel = ctx.getImageData(x, img.height - 1, 1, 1).data;
+    bottomColors.push({ r: bottomPixel[0], g: bottomPixel[1], b: bottomPixel[2] });
+
+    // Left edge
+    const leftPixel = ctx.getImageData(0, y, 1, 1).data;
+    leftColors.push({ r: leftPixel[0], g: leftPixel[1], b: leftPixel[2] });
+
+    // Right edge
+    const rightPixel = ctx.getImageData(img.width - 1, y, 1, 1).data;
+    rightColors.push({ r: rightPixel[0], g: rightPixel[1], b: rightPixel[2] });
   }
 
-  // Calculate average color
-  const avgColor = samples.reduce(
-    (acc, { r, g, b }) => ({
-      r: acc.r + r / samples.length,
-      g: acc.g + g / samples.length,
-      b: acc.b + b / samples.length,
-    }),
-    { r: 0, g: 0, b: 0 }
+  // Calculate average colors for each edge
+  const avgColor = (colors: { r: number; g: number; b: number; }[]) => {
+    return colors.reduce(
+      (acc, { r, g, b }) => ({
+        r: acc.r + r / colors.length,
+        g: acc.g + g / colors.length,
+        b: acc.b + b / colors.length,
+      }),
+      { r: 0, g: 0, b: 0 }
+    );
+  };
+
+  const topAvg = avgColor(topColors);
+  const bottomAvg = avgColor(bottomColors);
+  const leftAvg = avgColor(leftColors);
+  const rightAvg = avgColor(rightColors);
+
+  // Create radial gradient
+  const gradient = ctx.createRadialGradient(
+    targetCanvas.width / 2, targetCanvas.height / 2, 0,
+    targetCanvas.width / 2, targetCanvas.height / 2, 
+    Math.max(targetCanvas.width, targetCanvas.height)
   );
 
-  return `rgb(${Math.round(avgColor.r)}, ${Math.round(avgColor.g)}, ${Math.round(avgColor.b)})`;
+  // Add color stops based on edge colors
+  gradient.addColorStop(0, `rgb(${Math.round((topAvg.r + leftAvg.r) / 2)}, ${Math.round((topAvg.g + leftAvg.g) / 2)}, ${Math.round((topAvg.b + leftAvg.b) / 2)})`);
+  gradient.addColorStop(0.3, `rgb(${Math.round(topAvg.r)}, ${Math.round(topAvg.g)}, ${Math.round(topAvg.b)})`);
+  gradient.addColorStop(0.7, `rgb(${Math.round(bottomAvg.r)}, ${Math.round(bottomAvg.g)}, ${Math.round(bottomAvg.b)})`);
+  gradient.addColorStop(1, `rgb(${Math.round((bottomAvg.r + rightAvg.r) / 2)}, ${Math.round((bottomAvg.g + rightAvg.g) / 2)}, ${Math.round((bottomAvg.b + rightAvg.b) / 2)})`);
+
+  return gradient;
 }
 
 interface ProcessImageOptions extends ProcessImageInput {
@@ -105,8 +134,8 @@ export async function processImage({ file, preset, customSize, zoomLevel = 1.0 }
   const x = (targetSize.width - scaledWidth) / 2;
   const y = (targetSize.height - scaledHeight) / 2;
 
-  // Fill background with detected color
-  ctx.fillStyle = backgroundColor;
+  // Fill background with gradient
+  ctx.fillStyle = getBackgroundGradient(tempCtx, img, canvas);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw image with smart positioning based on format
