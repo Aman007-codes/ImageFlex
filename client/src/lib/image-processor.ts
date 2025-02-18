@@ -1,66 +1,81 @@
 import imageCompression from "browser-image-compression";
 import { ProcessImageInput, SOCIAL_PRESETS } from "@shared/schema";
 
-function getBackgroundGradient(ctx: CanvasRenderingContext2D, img: HTMLImageElement, targetCanvas: HTMLCanvasElement): CanvasGradient {
-  const sampleSize = 5;
-  const topColors: { r: number; g: number; b: number; }[] = [];
-  const bottomColors: { r: number; g: number; b: number; }[] = [];
-  const leftColors: { r: number; g: number; b: number; }[] = [];
-  const rightColors: { r: number; g: number; b: number; }[] = [];
+function getBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement, targetCanvas: HTMLCanvasElement): string | CanvasGradient {
+  try {
+    const sampleSize = 10;
+    const edgeColors: { r: number; g: number; b: number; }[] = [];
+    
+    // Sample colors from all edges with error handling
+    for (let i = 0; i < sampleSize; i++) {
+      try {
+        const x = Math.floor((img.width - 1) * (i / (sampleSize - 1)));
+        const y = Math.floor((img.height - 1) * (i / (sampleSize - 1)));
 
-  // Sample colors from all edges
-  for (let i = 0; i < sampleSize; i++) {
-    const x = Math.floor((img.width - 1) * (i / (sampleSize - 1)));
-    const y = Math.floor((img.height - 1) * (i / (sampleSize - 1)));
+        // Sample from all edges
+        const positions = [
+          [x, 0],             // top
+          [x, img.height - 1], // bottom
+          [0, y],             // left
+          [img.width - 1, y]  // right
+        ];
 
-    // Top edge
-    const topPixel = ctx.getImageData(x, 0, 1, 1).data;
-    topColors.push({ r: topPixel[0], g: topPixel[1], b: topPixel[2] });
+        for (const [px, py] of positions) {
+          const pixel = ctx.getImageData(px, py, 1, 1).data;
+          edgeColors.push({ r: pixel[0], g: pixel[1], b: pixel[2] });
+        }
+      } catch (e) {
+        console.warn("Error sampling color:", e);
+        continue;
+      }
+    }
 
-    // Bottom edge
-    const bottomPixel = ctx.getImageData(x, img.height - 1, 1, 1).data;
-    bottomColors.push({ r: bottomPixel[0], g: bottomPixel[1], b: bottomPixel[2] });
+    if (edgeColors.length === 0) {
+      return 'rgb(255, 255, 255)'; // Fallback to white if no colors sampled
+    }
 
-    // Left edge
-    const leftPixel = ctx.getImageData(0, y, 1, 1).data;
-    leftColors.push({ r: leftPixel[0], g: leftPixel[1], b: leftPixel[2] });
+  // Check if colors are similar (indicating solid background)
+    const isColorsSimilar = (colors: typeof edgeColors): boolean => {
+      const threshold = 15;
+      const firstColor = colors[0];
+      return colors.every(color => 
+        Math.abs(color.r - firstColor.r) <= threshold &&
+        Math.abs(color.g - firstColor.g) <= threshold &&
+        Math.abs(color.b - firstColor.b) <= threshold
+      );
+    };
 
-    // Right edge
-    const rightPixel = ctx.getImageData(img.width - 1, y, 1, 1).data;
-    rightColors.push({ r: rightPixel[0], g: rightPixel[1], b: rightPixel[2] });
+    // If colors are similar, use solid background
+    if (isColorsSimilar(edgeColors)) {
+      const avg = edgeColors.reduce(
+        (acc, { r, g, b }) => ({
+          r: acc.r + r / edgeColors.length,
+          g: acc.g + g / edgeColors.length,
+          b: acc.b + b / edgeColors.length,
+        }),
+        { r: 0, g: 0, b: 0 }
+      );
+      return `rgb(${Math.round(avg.r)}, ${Math.round(avg.g)}, ${Math.round(avg.b)})`;
+    }
+
+    // Create gradient for varying colors
+    const gradient = ctx.createLinearGradient(0, 0, targetCanvas.width, targetCanvas.height);
+    
+    // Calculate color stops
+    const numStops = 4;
+    for (let i = 0; i < numStops; i++) {
+      const colorIndex = Math.floor((edgeColors.length - 1) * (i / (numStops - 1)));
+      const color = edgeColors[colorIndex];
+      gradient.addColorStop(i / (numStops - 1), 
+        `rgb(${Math.round(color.r)}, ${Math.round(color.g)}, ${Math.round(color.b)})`
+      );
+    }
+
+    return gradient;
+  } catch (error) {
+    console.error("Background processing error:", error);
+    return 'rgb(255, 255, 255)'; // Fallback to white on error
   }
-
-  // Calculate average colors for each edge
-  const avgColor = (colors: { r: number; g: number; b: number; }[]) => {
-    return colors.reduce(
-      (acc, { r, g, b }) => ({
-        r: acc.r + r / colors.length,
-        g: acc.g + g / colors.length,
-        b: acc.b + b / colors.length,
-      }),
-      { r: 0, g: 0, b: 0 }
-    );
-  };
-
-  const topAvg = avgColor(topColors);
-  const bottomAvg = avgColor(bottomColors);
-  const leftAvg = avgColor(leftColors);
-  const rightAvg = avgColor(rightColors);
-
-  // Create radial gradient
-  const gradient = ctx.createRadialGradient(
-    targetCanvas.width / 2, targetCanvas.height / 2, 0,
-    targetCanvas.width / 2, targetCanvas.height / 2, 
-    Math.max(targetCanvas.width, targetCanvas.height)
-  );
-
-  // Add color stops based on edge colors
-  gradient.addColorStop(0, `rgb(${Math.round((topAvg.r + leftAvg.r) / 2)}, ${Math.round((topAvg.g + leftAvg.g) / 2)}, ${Math.round((topAvg.b + leftAvg.b) / 2)})`);
-  gradient.addColorStop(0.3, `rgb(${Math.round(topAvg.r)}, ${Math.round(topAvg.g)}, ${Math.round(topAvg.b)})`);
-  gradient.addColorStop(0.7, `rgb(${Math.round(bottomAvg.r)}, ${Math.round(bottomAvg.g)}, ${Math.round(bottomAvg.b)})`);
-  gradient.addColorStop(1, `rgb(${Math.round((bottomAvg.r + rightAvg.r) / 2)}, ${Math.round((bottomAvg.g + rightAvg.g) / 2)}, ${Math.round((bottomAvg.b + rightAvg.b) / 2)})`);
-
-  return gradient;
 }
 
 interface ProcessImageOptions extends ProcessImageInput {
@@ -134,8 +149,8 @@ export async function processImage({ file, preset, customSize, zoomLevel = 1.0 }
   const x = (targetSize.width - scaledWidth) / 2;
   const y = (targetSize.height - scaledHeight) / 2;
 
-  // Fill background with gradient
-  ctx.fillStyle = getBackgroundGradient(tempCtx, img, canvas);
+  // Fill background with appropriate style
+  ctx.fillStyle = getBackground(tempCtx, img, canvas);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw image with smart positioning based on format
