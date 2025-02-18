@@ -1,81 +1,37 @@
 import imageCompression from "browser-image-compression";
 import { ProcessImageInput, SOCIAL_PRESETS } from "@shared/schema";
 
-function getBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement, targetCanvas: HTMLCanvasElement): string | CanvasGradient {
-  try {
-    const sampleSize = 10;
-    const edgeColors: { r: number; g: number; b: number; }[] = [];
-    
-    // Sample colors from all edges with error handling
-    for (let i = 0; i < sampleSize; i++) {
-      try {
-        const x = Math.floor((img.width - 1) * (i / (sampleSize - 1)));
-        const y = Math.floor((img.height - 1) * (i / (sampleSize - 1)));
+function getBackgroundColor(ctx: CanvasRenderingContext2D, img: HTMLImageElement): string {
+  // Sample pixels from the edges of the image to determine background color
+  const edgeSize = 10;
+  const samples: { r: number; g: number; b: number; }[] = [];
 
-        // Sample from all edges
-        const positions = [
-          [x, 0],             // top
-          [x, img.height - 1], // bottom
-          [0, y],             // left
-          [img.width - 1, y]  // right
-        ];
+  // Sample from corners and edges
+  const locations = [
+    [0, 0], // Top-left
+    [img.width - 1, 0], // Top-right
+    [0, img.height - 1], // Bottom-left
+    [img.width - 1, img.height - 1], // Bottom-right
+    [Math.floor(img.width / 2), 0], // Top middle
+    [Math.floor(img.width / 2), img.height - 1], // Bottom middle
+  ];
 
-        for (const [px, py] of positions) {
-          const pixel = ctx.getImageData(px, py, 1, 1).data;
-          edgeColors.push({ r: pixel[0], g: pixel[1], b: pixel[2] });
-        }
-      } catch (e) {
-        console.warn("Error sampling color:", e);
-        continue;
-      }
-    }
-
-    if (edgeColors.length === 0) {
-      return 'rgb(255, 255, 255)'; // Fallback to white if no colors sampled
-    }
-
-  // Check if colors are similar (indicating solid background)
-    const isColorsSimilar = (colors: typeof edgeColors): boolean => {
-      const threshold = 15;
-      const firstColor = colors[0];
-      return colors.every(color => 
-        Math.abs(color.r - firstColor.r) <= threshold &&
-        Math.abs(color.g - firstColor.g) <= threshold &&
-        Math.abs(color.b - firstColor.b) <= threshold
-      );
-    };
-
-    // If colors are similar, use solid background
-    if (isColorsSimilar(edgeColors)) {
-      const avg = edgeColors.reduce(
-        (acc, { r, g, b }) => ({
-          r: acc.r + r / edgeColors.length,
-          g: acc.g + g / edgeColors.length,
-          b: acc.b + b / edgeColors.length,
-        }),
-        { r: 0, g: 0, b: 0 }
-      );
-      return `rgb(${Math.round(avg.r)}, ${Math.round(avg.g)}, ${Math.round(avg.b)})`;
-    }
-
-    // Create gradient for varying colors
-    const gradient = ctx.createLinearGradient(0, 0, targetCanvas.width, targetCanvas.height);
-    
-    // Calculate color stops
-    const numStops = 4;
-    for (let i = 0; i < numStops; i++) {
-      const colorIndex = Math.floor((edgeColors.length - 1) * (i / (numStops - 1)));
-      const color = edgeColors[colorIndex];
-      gradient.addColorStop(i / (numStops - 1), 
-        `rgb(${Math.round(color.r)}, ${Math.round(color.g)}, ${Math.round(color.b)})`
-      );
-    }
-
-    return gradient;
-  } catch (error) {
-    console.error("Background processing error:", error);
-    return 'rgb(255, 255, 255)'; // Fallback to white on error
+  for (const [x, y] of locations) {
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    samples.push({ r: pixel[0], g: pixel[1], b: pixel[2] });
   }
+
+  // Calculate average color
+  const avgColor = samples.reduce(
+    (acc, { r, g, b }) => ({
+      r: acc.r + r / samples.length,
+      g: acc.g + g / samples.length,
+      b: acc.b + b / samples.length,
+    }),
+    { r: 0, g: 0, b: 0 }
+  );
+
+  return `rgb(${Math.round(avgColor.r)}, ${Math.round(avgColor.g)}, ${Math.round(avgColor.b)})`;
 }
 
 interface ProcessImageOptions extends ProcessImageInput {
@@ -149,8 +105,8 @@ export async function processImage({ file, preset, customSize, zoomLevel = 1.0 }
   const x = (targetSize.width - scaledWidth) / 2;
   const y = (targetSize.height - scaledHeight) / 2;
 
-  // Fill background with appropriate style
-  ctx.fillStyle = getBackground(tempCtx, img, canvas);
+  // Fill background with detected color
+  ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw image with smart positioning based on format
